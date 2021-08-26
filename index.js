@@ -44,7 +44,7 @@ const App = () => (
       <Switch>
       {toc.map(({ name: sectionName, pages=[] }) =>
         pages.map(({ name, comp }) => (
-          <Route path={slugify(sectionName,name)} exact>{comp}</Route>
+          <Route path={slugify(sectionName,name)} exact component={comp}/>
         ))
       )}
       <Route path="/" exact><TOC /></Route>
