@@ -2,13 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 
 import useAudioContext from '../utils/useAudioContext'
 import useBufferLoader from '../utils/useBufferLoader'
-
-const defSound = (name, gain) => ({name, gain})
-const soundDefs = [
-  defSound('kick', 0.8),
-  defSound('snare', 0.4),
-  defSound('hat', 0.15)
-]
+import soundDefs from '../utils/soundDefs'
 
 const player = (context, def) => {
   // these are cheap to create, can only be played once:
@@ -131,9 +125,9 @@ const Player = ({ context, sounds }) => {
   const [playing, setPlaying] = useState(false)
   const [clockState, setClockState] = useState(null)
 
-  // const src = ex1_mayhem
+  const src = ex1_mayhem
   // const src = ex2_clock
-  const src = ex3_bar
+  // const src = ex3_bar
 
   const source = useMemo(() => src(context, sounds, setClockState), [])
 

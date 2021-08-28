@@ -8,7 +8,15 @@ You probably don't have [Amusia](https://en.wikipedia.org/wiki/Amusia), especial
 
 ## Beats, Bars, Tempo
 
+links:
+
+- [Defining Meter](https://www.liveabout.com/beats-and-meter-2456427)
+
 ## Polyrhythm/Meter
+
+links:
+
+- [Euclidean Rhythms Paper](http://cgm.cs.mcgill.ca/~godfried/publications/banff.pdf)
 
 # Timbre
 

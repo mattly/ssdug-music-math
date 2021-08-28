@@ -4,6 +4,7 @@ import { Global, css } from '@emotion/react'
 import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom'
 
 import Beats from './rhythm/beats'
+import Euclid from './rhythm/euclid'
 
 const toc = [
   {
@@ -13,6 +14,7 @@ const toc = [
     name: "Rhythm",
     pages: [
       { name: "Beats", comp: Beats },
+      { name: "Polyrythm / Euclid", comp: Euclid }
     ],
   }
 ]
