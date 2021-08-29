@@ -11,6 +11,7 @@ You probably don't have [Amusia](https://en.wikipedia.org/wiki/Amusia), especial
 links:
 
 - [Defining Meter](https://www.liveabout.com/beats-and-meter-2456427)
+- [Terminator Theme](https://slate.com/culture/2014/02/the-time-signature-of-the-terminator-score-is-a-mystery-for-the-ages.html)
 
 ## Polyrhythm/Meter
 
