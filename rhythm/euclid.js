@@ -1,86 +1,21 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import styled from "@emotion/styled";
+import { css } from "@emotion/css";
 
 import useAudioContext from "../utils/useAudioContext";
 import useBufferLoader from "../utils/useBufferLoader";
 import soundDefs from "../utils/soundDefs";
-import { css } from "@emotion/css";
+
+import player from "./player";
+import { pattern, PhaseDisplay, seqStyle, SequenceDisplay } from './euclid_support'
 
 const Row = styled.div({
   display: "flex",
 });
 
-const Left = styled.div({
-  width: `10rem`,
-  marginRight: `0.5rem`,
-  textAlign: "right",
-});
-
 const rightWidth = 640;
 
-const Right = styled.div(
-  {
-    width: `${rightWidth}px`,
-    position: "relative",
-  },
-  ({ styles }) => ({
-    ...styles,
-  })
-);
-
-const PhaseDisplay = styled.div(
-  {
-    backgroundColor: "#a22",
-    height: "20px",
-    width: `${rightWidth / 64}px`,
-    position: "absolute",
-  },
-  ({ phase }) => ({
-    left: `${phase * 10}px`,
-  })
-);
-
-const stroke = "#ddd";
-const seqStyle = {
-  stroke: "#ddd",
-  strokeWidth: 2,
-};
-const SequenceDisplay = ({ width, y=0, height=20, inset=10, steps }) => (
-  <g transform={`translate(0,${y})`}>
-    <line x1={inset/2} x2={width - (inset/2)} y1={height / 2} y2={height / 2} {...seqStyle} />
-    <g transform={`translate(${inset})`}>
-      {steps.map((pulsing, index) => (
-        <g key={index} transform={`translate(${(index / steps.length) * (width - (inset * 2))})`}>
-          {pulsing ? (
-            <circle cx={0} cy={height / 2} r={5} {...seqStyle} fill="white" />
-          ) : (
-            <line x1={0} x2={0} y1={0} y2={height} {...seqStyle} />
-          )}
-        </g>
-      ))}
-    </g>
-  </g>
-);
-
 const withNumber = (f) => (event) => f(event.target.valueAsNumber, event.target.name);
-
-const pattern = ({ stepCount, pulseCount, offset }) => {
-  let pile = 0;
-  const arr = new Array(stepCount);
-  for (let step = 0; step < stepCount; step++) {
-    let stepIdx = (step + offset + stepCount) % stepCount;
-    pile = pile + pulseCount;
-    console.log(stepIdx, pile, pulseCount);
-    if (pile >= stepCount) {
-      pile = pile - stepCount;
-      arr[stepIdx] = 1;
-    } else {
-      arr[stepIdx] = 0;
-    }
-  }
-  console.log(arr);
-  return arr;
-};
 
 const recomputeSeq = (updateFn) => (v, k) => {
   updateFn((seq) => {
@@ -97,21 +32,60 @@ const EuclidRow = styled.div({
   columnGap: "0.5rem",
 });
 
+const rhythm = (pulseCount, stepCount, offset, notes) => ({ stepCount, pulseCount, offset, notes });
+
+const rhythms = [
+  rhythm(2, 4, 0, "basic"),
+  rhythm(2, 3, 1, "Conga, Latin American"),
+  rhythm(2, 5, -2, "Persian khafif-e-ramal, take five"),
+  rhythm(3, 4, 1, "Cumbia, Calpyso, Persian khalif-e-saghil, Greek trochoid choreic"),
+  rhythm(3, 5, 1, "Russian folk"),
+  rhythm(3, 7, -2, "Bulgarian folk dance, Pink Floyd's Money"),
+  rhythm(3, 8, 1, "Cuban tresillo"),
+  rhythm(4, 7, 1, "Bulgarian folk dance"),
+  rhythm(4, 9, -2, "Turkish Aksak rhythm"),
+  rhythm(4, 11, 1, "Frank Zappa's Outside Now"),
+  rhythm(5, 6, 1, "Arabic York-Samai"),
+  rhythm(5, 7, 1, "Arabic Nawakhat"),
+  rhythm(5, 8, -1, "Cuban Cinquillo, Tango, Persian Al-saghil-al-sani"),
+  rhythm(5, 9, 1, "Arabic Agsag-Samai, South African Venda, Rumanian folk dance"),
+  rhythm(5, 11, -2, "Moussorgsky's Pictures at an Exhibition"),
+  rhythm(5, 12, 1, "South African Venda (children's song)"),
+  rhythm(5, 16, 7, "Brazilian Bossa Nova"),
+  rhythm(7, 8, 1, "Tuaregian frame-drum rhythm"),
+  rhythm(7, 12, -3, "common West African bell pattern"),
+  rhythm(7, 16, 3, "Brazilian Samba, Ghanan clapping pattern"),
+  rhythm(9, 16, 4, "various African, Brazilian Samba"),
+  rhythm(11, 24, 1, "Aka pygmies of Central Africa"),
+  rhythm(13, 24, -9, "Aka pygmies of upper Sangha")
+];
+
 const NumberInput = (props) => <input className={css({ width: "3rem" })} type="number" {...props} />;
 
 const Player = ({ context, sounds }) => {
   const [barLength, setBarLength] = useState(2000);
   const handleBarLengthChange = useCallback(withNumber(setBarLength), []);
 
-  const [sequence, setSequence] = useState({ stepCount: 4, pulseCount: 2, offset: 1, steps: [1, 0, 1, 0] });
+  const [sequence, setSequence] = useState({
+    stepCount: 4,
+    pulseCount: 2,
+    offset: 1,
+    steps: [true, false, true, false],
+  });
   const handleSequenceChange = useCallback(withNumber(recomputeSeq(setSequence)), []);
 
-  const [bar, setBar] = useState(0);
-  const [phase, setPhase] = useState(0);
+  const selectPreset = useCallback((e) => {
+    const preset = rhythms[e.target.value];
+    if (preset) {
+      const steps = pattern(preset);
+      setSequence({ ...preset, steps });
+    }
+  });
+
+  const [phasePos, setPhasePos] = useState(0);
   const stateRef = useRef({ barLength, sequence });
 
   useEffect(() => {
-    let bars = 0;
     let startClock = context.currentTime + 0.25;
     let nextBarClock = startClock;
     let scheduleAgainIn;
@@ -121,14 +95,18 @@ const Player = ({ context, sounds }) => {
       const thisClock = nextBarClock;
       nextBarClock = thisClock + stateRef.current.barLength / 1000;
       scheduleAgainIn = (nextBarClock - context.currentTime) * 1000;
-      // console.log({ bars, thisClock, nextBarClock,  time: context.currentTime, scheduleAgainIn })
       timerID = setTimeout(scheduleBar, scheduleAgainIn - 10);
-      const phaseTime = scheduleAgainIn / 64;
+      const sixtyFourth = scheduleAgainIn / 64;
       for (let i = 0; i < 64; i++) {
-        setTimeout(() => setPhase(i), phaseTime * i);
+        setTimeout(() => setPhasePos(i/64), sixtyFourth * i);
       }
-      setBar((b) => b + 1);
-      bars++;
+      const { steps } = stateRef.current.sequence;
+      const phase = (p) => thisClock + (p * stateRef.current.barLength) / 1000;
+      steps.forEach((pulse, index) => {
+        if (pulse) {
+          player(context, sounds[3]).source.start(phase(index / steps.length));
+        }
+      });
     };
     scheduleBar();
     return () => clearTimeout(timerID);
@@ -138,6 +116,8 @@ const Player = ({ context, sounds }) => {
     stateRef.current = { barLength, sequence };
   }, [barLength, sequence]);
 
+  const canvasHeight = 100;
+
   return (
     <div>
       <div>
@@ -146,37 +126,51 @@ const Player = ({ context, sounds }) => {
           <input type="number" value={barLength} onChange={handleBarLengthChange} min={500} max={4000} step={10} />
         </label>
       </div>
-      <div>
-        <Row>
-          <Left>Bars</Left>
-          <Right>{bar}</Right>
-        </Row>
-        <Row>
-          <Left>Phase</Left>
-          <Right styles={{ backgroundColor: "#ddd" }}>
-            <PhaseDisplay phase={phase} />
-          </Right>
-        </Row>
-      </div>
       <Row>
         <div>
+          <select onChange={selectPreset}  className={css({width: '10rem'})}>
+            {rhythms.map((r, i) => (
+              <option key={r.notes} value={i}>
+                {r.stepCount}/{r.pulseCount} : {r.notes}
+              </option>
+            ))}
+          </select>
           <EuclidRow>
             <label>
               steps
-              <NumberInput name="stepCount" min={1} max={64} value={sequence.stepCount} onChange={handleSequenceChange} />
+              <NumberInput
+                name="stepCount"
+                min={1}
+                max={64}
+                value={sequence.stepCount}
+                onChange={handleSequenceChange}
+              />
             </label>
             <label>
               pulses
-              <NumberInput name="pulseCount" min={1} max={sequence.stepCount} value={sequence.pulseCount} onChange={handleSequenceChange} />
+              <NumberInput
+                name="pulseCount"
+                min={1}
+                max={sequence.stepCount}
+                value={sequence.pulseCount}
+                onChange={handleSequenceChange}
+              />
             </label>
             <label>
               offset
-              <NumberInput name="offset" min={-1 * (sequence.stepCount - 1)} max={sequence.stepCount - 1} value={sequence.offset} onChange={handleSequenceChange} />
+              <NumberInput
+                name="offset"
+                min={-1 * (sequence.stepCount - 1)}
+                max={sequence.stepCount - 1}
+                value={sequence.offset}
+                onChange={handleSequenceChange}
+              />
             </label>
           </EuclidRow>
         </div>
         <div>
-          <svg width={rightWidth} height={100}>
+          <svg width={rightWidth} height={canvasHeight}>
+            <PhaseDisplay width={rightWidth} y={0} height={100} phase={phasePos} />
             <SequenceDisplay y={20} width={rightWidth} {...sequence} />
           </svg>
         </div>

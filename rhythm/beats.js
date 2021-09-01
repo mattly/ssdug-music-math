@@ -4,19 +4,7 @@ import useAudioContext from '../utils/useAudioContext'
 import useBufferLoader from '../utils/useBufferLoader'
 import soundDefs from '../utils/soundDefs'
 
-const player = (context, def) => {
-  // these are cheap to create, can only be played once:
-  // https://developer.mozilla.org/en-US/docs/Web/API/AudioBufferSourceNode
-  const source = context.createBufferSource()
-  source.buffer = def.buffer
-
-  const gain = context.createGain()
-  gain.gain.setValueAtTime(def.gain || 0.5, context.currentTime)
-
-  source.connect(gain)
-  gain.connect(context.destination)
-  return { source, gain }
-}
+import player from './player'
 
 const tempo = 120
 const tempo2ms = (tempo) => 60000 / tempo

@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom'
 
 import Beats from './rhythm/beats'
 import Euclid from './rhythm/euclid'
+import Poly from './rhythm/poly'
 
 const toc = [
   {
@@ -14,7 +15,8 @@ const toc = [
     name: "Rhythm",
     pages: [
       { name: "Beats", comp: Beats },
-      { name: "Polyrythm / Euclid", comp: Euclid }
+      { name: "A Theory of Division", comp: Euclid },
+      { name: "Grid Dimensions", comp: Poly }
     ],
   }
 ]
@@ -25,7 +27,7 @@ const pageStyles = css({
   }
 })
 
-const slugify = (sectionName, name) => `/${sectionName.trim()}/${name.trim()}`.replace(/\s+/, '-').toLowerCase()
+const slugify = (sectionName, name) => `/${sectionName.trim()}/${name.trim()}`.replace(/\s+/g, '-').toLowerCase()
 
 const TOC = () => (
   <nav>
