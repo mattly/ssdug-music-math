@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import styled from "@emotion/styled";
 import { css } from "@emotion/css";
 
@@ -7,10 +7,10 @@ import useBufferLoader from "../utils/useBufferLoader";
 import soundDefs from "../utils/soundDefs";
 
 import player from "./player";
-import { pattern, PhaseDisplay, SequenceDisplay } from "./euclid_support";
+import { pattern, PhaseDisplay, SequenceDisplay, lcm } from "./euclid_support";
 
 const updatePattern = (p) => {
-  console.log(`updating pattern`, p)
+  console.log(`updating pattern`, p);
   p.steps = pattern(p);
   return p;
 };
@@ -20,9 +20,8 @@ const makePattern = (sound, time, stepCount, pulseCount, offset = 1) =>
 
 const ControlRow = styled.div({
   display: "grid",
-  gridTemplateColumns: "6rem 5rem 3rem 3rem 3rem",
+  gridTemplateColumns: "6rem 3rem 3rem 3rem 3rem 3rem",
   columnGap: "0.5rem",
-  width: "23rem",
   height: "23px",
 });
 
@@ -44,6 +43,10 @@ const SeqControl = ({ sounds, seq, idx, onChange }) => (
       step={1}
       value={seq.stepCount}
       onChange={onChange}
+    />
+    <input
+      readOnly
+      value={seq.time / seq.stepCount}
     />
     <input
       type="number"
@@ -68,77 +71,120 @@ const SeqControl = ({ sounds, seq, idx, onChange }) => (
 
 const updateSeq = (updater) => (idx, field, value) =>
   updater(({ seqs }) => {
-    console.log(`updating from`, idx, field, value)
+    console.log(`updating from`, idx, field, value);
     const nextSeq = updatePattern({ ...seqs[idx], [field]: value });
     seqs[idx] = nextSeq;
     return { seqs };
   });
 
-const extractChange = (f) => (event) => {
-  console.log(event)
+const extractChange = (sounds, f) => (event) => {
+  console.log(event);
   const [idx, fieldName] = event.target.name.split(".");
-  const value = event.target.type == "number" ? event.target.valueAsNumber : event.target.value;
+  let value;
+  if (event.target.type == "number" && event.target.valueAsNumber) {
+    value = event.target.valueAsNumber;
+  } else if (fieldName == "sound") {
+    value = sounds.find(({ name }) => event.target.value == name);
+  }
   f(parseInt(idx), fieldName, value);
 };
 
+const LCMCell = styled.td({
+  textAlign: 'right',
+  minWidth: '1rem',
+})
+
 const Sequencer = ({ context, sounds }) => {
   const [seqState, setSeqState] = useState(() => ({
-    seqs: [makePattern(sounds[0], 2, 4, 2, 1), makePattern(sounds[1], 2, 4, 2, 0)],
+    seqs: [
+      makePattern(sounds[0], 2, 4, 2, 1),
+      makePattern(sounds[1], 2, 4, 2, 0),
+      makePattern(sounds[2], 4, 16, 11, 0),
+      makePattern(sounds[3], 6, 24, 13, 0)
+    ],
   }));
-  const handleUpdate = useCallback(extractChange(updateSeq(setSeqState)), []);
+  const handleUpdate = useCallback(extractChange(sounds, updateSeq(setSeqState)), []);
   const [phasePos, setPhasePos] = useState([0, 0, 0, 0]);
-  const updatePhase = useCallback((i,v) => setPhasePos(p => {
-    p[i] = v;
-    return [...p]
-  }), [])
+  const longestTime = useMemo(
+    () => Math.max.apply(null, seqState.seqs.map(({ time }) => time)), [seqState]);
+  const [phaseReset, setPhaseReset] = useState(Date.now());
 
   const stateRef = useRef(seqState.seqs);
 
   useEffect(() => {
-    let nextStarts = stateRef.current.map(() => context.currentTime + 0.25);
-    let timerIds = [];
+    let nextStart = context.currentTime + 0.25
+    let timers = []
+    let phases = stateRef.current.map(() => 0)
+    let interval = 0.05
 
-    const schedule = (i) => {
-      const thisStart = nextStarts[i];
-      nextStarts[i] = thisStart + stateRef.current[i].time;
-      const scheduleAgainIn = (nextStarts[i] - context.currentTime) * 1000;
-      timerIds[i] = setTimeout(schedule, scheduleAgainIn - 20, i);
-      const redrawTime = scheduleAgainIn / 64;
-      for (let j = 0; j < scheduleAgainIn / redrawTime; j++) {
-        setTimeout(
-          updatePhase,
-          redrawTime * j + (thisStart - context.currentTime) * 1000,
-          i, j/64
-        );
-      }
-    };
-    stateRef.current.forEach((s, i) => schedule(i));
-    return () => timerIds.forEach((id) => clearTimeout(id));
-  }, [context]);
+    const schedule = () => {
+      const thisStart = nextStart
+      nextStart = thisStart + interval
+      timers = []
+      setPhasePos([...phases])
+      stateRef.current.forEach(({ sound, steps, time }, i) => {
+        const startPhase = phases[i]
+        const phaseLength = interval / time
+        const endPhase = startPhase + phaseLength
+        phases[i] = endPhase % 1
+        steps.forEach((pulse, index) => {
+          const stepPhase = index / steps.length
+          if (pulse && stepPhase < endPhase && stepPhase > startPhase) {
+            const playIn = (stepPhase - startPhase) * time
+            player(context, sound).source.start(thisStart + playIn)
+          }
+        })
+      })
+      let nextSchedule = (nextStart - context.currentTime) * 1000
+      timers.push(setTimeout(schedule, nextSchedule - 10))
+    }
+    schedule()
+    return () => timers.forEach(id => clearTimeout(id))
+  }, [context, phaseReset]);
 
   return (
-    <div className={css({ display: "flex" })}>
-      <div>
-        <ControlRow>
-          <div>sound</div>
-          <div>time</div>
-          <div>steps</div>
-          <div>pulses</div>
-          <div>offset</div>
-        </ControlRow>
-        {seqState.seqs.map((s, i) => (
-          <SeqControl key={i} sounds={sounds} seq={s} idx={i} onChange={handleUpdate} />
-        ))}
-      </div>
-      <div>
-        <svg width={640} height={100} className={css({ marginTop: "23px" })}>
+    <div>
+      <button onClick={() => setPhaseReset(Date.now())}>reset phases</button>
+      <div className={css({ display: "grid", gridTemplateColumns: 'auto auto 1fr', columnGap: '1rem' })}>
+        <div>
+          <ControlRow>
+            <div>sound</div>
+            <div>time</div>
+            <div>steps</div>
+            <div>stime</div>
+            <div>pulses</div>
+            <div>offset</div>
+          </ControlRow>
           {seqState.seqs.map((s, i) => (
-            <g key={i}>
-              <PhaseDisplay width={640} y={i * 23} height={23} phase={phasePos[i]} />
-              <SequenceDisplay y={i * 23} width={640} {...s} />
-            </g>
+            <SeqControl key={i} sounds={sounds} seq={s} idx={i} onChange={handleUpdate} />
           ))}
-        </svg>
+        </div>
+        <div>
+          <table>
+            <thead>
+              <tr>
+                {seqState.seqs.map((s, i) => <th key={i}>{i}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+            {seqState.seqs.map((s,i) => (
+              <tr key={i}>
+                {seqState.seqs.map((r, j) => <LCMCell key={j}>{lcm(s.time, r.time).toFixed(2)}</LCMCell>)}
+              </tr>
+            ))}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <svg width={650} height={100} className={css({ marginTop: "23px" })}>
+            {seqState.seqs.map((s, i) => (
+              <g key={i} transform={`translate(5,${i * 23})`}>
+                <PhaseDisplay width={(640 * s.time) / longestTime} y={i * 23} height={23} phase={phasePos[i]} />
+                <SequenceDisplay y={i * 23} width={(640 * s.time) / longestTime} {...s} />
+              </g>
+            ))}
+          </svg>
+        </div>
       </div>
     </div>
   );
