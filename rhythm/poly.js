@@ -10,7 +10,6 @@ import player from "./player";
 import { pattern, PhaseDisplay, SequenceDisplay, lcm } from "./euclid_support";
 
 const updatePattern = (p) => {
-  console.log(`updating pattern`, p);
   p.steps = pattern(p);
   return p;
 };
@@ -71,14 +70,12 @@ const SeqControl = ({ sounds, seq, idx, onChange }) => (
 
 const updateSeq = (updater) => (idx, field, value) =>
   updater(({ seqs }) => {
-    console.log(`updating from`, idx, field, value);
     const nextSeq = updatePattern({ ...seqs[idx], [field]: value });
     seqs[idx] = nextSeq;
     return { seqs };
   });
 
 const extractChange = (sounds, f) => (event) => {
-  console.log(event);
   const [idx, fieldName] = event.target.name.split(".");
   let value;
   if (event.target.type == "number" && event.target.valueAsNumber) {
@@ -92,6 +89,7 @@ const extractChange = (sounds, f) => (event) => {
 const LCMCell = styled.td({
   textAlign: 'right',
   minWidth: '1rem',
+  padding: '0 0.2rem'
 })
 
 const Sequencer = ({ context, sounds }) => {
@@ -113,14 +111,13 @@ const Sequencer = ({ context, sounds }) => {
 
   useEffect(() => {
     let nextStart = context.currentTime + 0.25
-    let timers = []
+    let timer
     let phases = stateRef.current.map(() => 0)
     let interval = 0.05
 
     const schedule = () => {
       const thisStart = nextStart
       nextStart = thisStart + interval
-      timers = []
       setPhasePos([...phases])
       stateRef.current.forEach(({ sound, steps, time }, i) => {
         const startPhase = phases[i]
@@ -136,10 +133,10 @@ const Sequencer = ({ context, sounds }) => {
         })
       })
       let nextSchedule = (nextStart - context.currentTime) * 1000
-      timers.push(setTimeout(schedule, nextSchedule - 10))
+      timer =  setTimeout(schedule, nextSchedule - 10)
     }
     schedule()
-    return () => timers.forEach(id => clearTimeout(id))
+    return () => clearTimeout(timer)
   }, [context, phaseReset]);
 
   return (
