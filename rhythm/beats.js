@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react'
 
 import useAudioContext from '../utils/useAudioContext'
 import useBufferLoader from '../utils/useBufferLoader'
-import soundDefs from '../utils/soundDefs'
+import { percDefs } from '../utils/soundDefs'
 
 import player from './player'
 
@@ -144,7 +144,7 @@ const Player = ({ context, sounds }) => {
 
 const Beats = () => {
   const context = useAudioContext()
-  const sounds = useBufferLoader(context, soundDefs)
+  const sounds = useBufferLoader(context, percDefs)
 
   if (!sounds) { return "loading" }
   return <Player {...{context, sounds}} />

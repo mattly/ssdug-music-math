@@ -4,7 +4,7 @@ import { css } from "@emotion/css";
 
 import useAudioContext from "../utils/useAudioContext";
 import useBufferLoader from "../utils/useBufferLoader";
-import soundDefs from "../utils/soundDefs";
+import { percDefs } from "../utils/soundDefs";
 
 import player from "./player";
 import { pattern, PhaseDisplay, SequenceDisplay, lcm } from "./euclid_support";
@@ -189,7 +189,7 @@ const Sequencer = ({ context, sounds }) => {
 
 export default () => {
   const context = useAudioContext();
-  const sounds = useBufferLoader(context, soundDefs);
+  const sounds = useBufferLoader(context, percDefs);
 
   if (!sounds) {
     return "loading";

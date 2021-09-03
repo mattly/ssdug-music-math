@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom'
 import Beats from './rhythm/beats'
 import Euclid from './rhythm/euclid'
 import Poly from './rhythm/poly'
+import Domains from './timber/domains'
 
 const toc = [
   {
@@ -18,6 +19,12 @@ const toc = [
       { name: "A Theory of Division", comp: Euclid },
       { name: "Grid Dimensions", comp: Poly }
     ],
+  },
+  {
+    name: "Timbre",
+    pages: [
+      { name: "Domains", comp: Domains }
+    ]
   }
 ]
 
