@@ -7,6 +7,7 @@ import Beats from './rhythm/beats'
 import Euclid from './rhythm/euclid'
 import Poly from './rhythm/poly'
 import Domains from './timber/domains'
+import Overtones from './timber/additive'
 
 const toc = [
   {
@@ -23,7 +24,8 @@ const toc = [
   {
     name: "Timbre",
     pages: [
-      { name: "Domains", comp: Domains }
+      { name: "Domains", comp: Domains },
+      { name: "Overtones", comp: Overtones }
     ]
   }
 ]
