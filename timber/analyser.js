@@ -9,7 +9,7 @@ export const useAnalyser = (context) => useMemo(() => {
 }, [context])
 
 
-const drawAnalyser = (analyser, timeRef, freqRef) => {
+const drawAnalyser = (analyser, wantsHistory, timeRef, freqRef) => {
   if (!timeRef.current && !freqRef.current) { return }
   const times = new Uint8Array(analyser.frequencyBinCount)
   const freqs = new Uint8Array(analyser.frequencyBinCount)
@@ -17,15 +17,14 @@ const drawAnalyser = (analyser, timeRef, freqRef) => {
   const timeHeight = timeRef.current.height
   const freqHeight = freqRef.current.height
   const barWidth = width / analyser.frequencyBinCount
+  let value, height
 
   const redraw = () => {
     if (!timeRef.current && !freqRef.current) { return  }
-    analyser.smoothingTimeConstant = 0.8
-    analyser.fftSize = 2048
+    analyser.smoothingTimeConstant = 0.4
+    analyser.fftSize = 4096
     analyser.getByteTimeDomainData(times)
     analyser.getByteFrequencyData(freqs)
-    let percent;
-    let height;
 
     const timeCtx = timeRef.current.getContext('2d')
     timeCtx.fillStyle = 'white'
@@ -46,15 +45,26 @@ const drawAnalyser = (analyser, timeRef, freqRef) => {
     timeCtx.lineTo(width, timeHeight / 2)
     timeCtx.stroke()
 
-
     const freqCtx = freqRef.current.getContext('2d')
-    freqCtx.fillStyle = 'white'
-    freqCtx.fillRect(0, 0, width, freqHeight)
-    freqCtx.fillStyle = 'black'
+    if (wantsHistory) {
+      const existing = freqCtx.getImageData(0, 0, width, freqHeight)
+      freqCtx.putImageData(existing, 1, 0)
+    } else {
+      freqCtx.fillStyle = 'white'
+      freqCtx.fillRect(0, 0, width, freqHeight)
+      freqCtx.fillStyle = 'black'
+    }
+
     for (var i = 0; i < freqs.length; i++) {
-      percent = freqs[i] / 256
-      height = (freqHeight * percent)
-      freqCtx.fillRect(i * barWidth, freqHeight - height - 1, barWidth, height)
+      value = Math.pow(freqs[i] / 256, 2)
+      if (wantsHistory) {
+        value = 255 - (value * 256)
+        freqCtx.fillStyle = `rgb(${value},${value},${value})`
+        freqCtx.fillRect(0, freqHeight - Math.round(i / freqs.length * freqHeight), 1, 1)
+      } else {
+        height = freqHeight * freqs[i] / 256
+        freqCtx.fillRect(i * barWidth, freqHeight - height - 1, barWidth, height)
+      }
     }
 
     requestAnimationFrame(redraw)
@@ -63,12 +73,12 @@ const drawAnalyser = (analyser, timeRef, freqRef) => {
   requestAnimationFrame(redraw)
 }
 
-export const AnalyserDisplay = ({ width=1000, timeHeight=100, freqHeight=500, analyser }) => {
+export const AnalyserDisplay = ({ width=1024, timeHeight=100, freqHeight=512, analyser, withHistory }) => {
   const timeRef = useRef(null)
   const freqRef = useRef(null)
 
   useEffect(() => {
-    drawAnalyser(analyser, timeRef, freqRef)
+    drawAnalyser(analyser, withHistory, timeRef, freqRef)
   }, [analyser, timeRef.current, freqRef.current])
 
   return <div>

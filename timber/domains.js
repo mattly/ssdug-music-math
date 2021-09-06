@@ -3,7 +3,7 @@ import { css } from "@emotion/css";
 
 import useAudioContext from "../utils/useAudioContext";
 import useBufferLoader from "../utils/useBufferLoader";
-import { percDefs } from "../utils/soundDefs";
+import { etcDefs, percDefs } from "../utils/soundDefs";
 import player from "../rhythm/player";
 
 import { AnalyserDisplay, useAnalyser } from "./analyser";
@@ -27,16 +27,18 @@ const Player = ({ context, sounds }) => {
         <button key={i} data-name={s.name} onClick={playSound} className={css({marginRight: '0.5rem'})}>{s.name}</button>
       ))}
     </div>
-    <AnalyserDisplay analyser={analyser} />
+    <AnalyserDisplay analyser={analyser} width={1024} withHistory />
   </div>
 }
 
 export default () => {
   const context = useAudioContext();
   const percussion = useBufferLoader(context, percDefs);
+  const etc = useBufferLoader(context, etcDefs)
 
-  if (!percussion) {
+  if (!percussion || !etc) {
     return "loading";
   }
-  return <Player context={context} sounds={[...percussion]} />
+  console.log('we have sounds')
+  return <Player context={context} sounds={[...percussion, ...etc]} />
 }
