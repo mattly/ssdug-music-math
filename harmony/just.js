@@ -61,30 +61,40 @@ const snapFraction = fraction => {
 
 const row = { borderBottom: '1px solid #ddd', margin: 0, fontSize: '12px', textAlign: 'right' }
 
-const NoteTable = ({ notes, names }) => {
+const NoteTable = ({ notes, names, displayCents }) => {
+  const sorted = notes.sort((a,b) => a.scale - b.scale)
   return <table>
     <thead>
       <tr>
         <th>&nbsp;</th>
-        {notes.map(n => <th key={n.ratio} style={row}>{names[n.ratio] || n.ratio}</th>)}
+        {sorted.map(n => <th key={n.ratio} style={row}>{names[n.ratio] || n.ratio}</th>)}
       </tr>
     </thead>
     <tbody>
-      {notes.map(m => <tr key={m.ratio}>
-        <th  style={row}>{names[m.ratio] || m.ratio}</th>
-        {notes.map(n => <td key={n.ratio} style={row}>{snapFraction(new Fraction(m.scale / n.scale)).toFraction()}</td>)}
-      </tr>)}
+      {sorted.map(m => <tr key={m.ratio}>
+          <th style={row}>{names[m.ratio] || m.ratio}</th>
+          {sorted.map(n => {
+            let interval = snapFraction(new Fraction(m.scale / n.scale))
+            return <td key={n.ratio} style={row}>{
+              displayCents ?
+                (Math.log(interval.valueOf()) / Math.log(2) * 1200).toFixed(2)
+                : interval.toFraction()
+            }</td>
+          })}
+        </tr>
+      )}
     </tbody>
   </table>
 }
 
+const overToneMax = 6000
 const OvertoneDisplay = ({ notes, width = 1024, height = 100 }) => {
   const freqs = useMemo(() =>
     notes.map(v => {
       const base = v.scale * v.mult * 100
       const tones = [base]
       let overtone = 2
-      while (overtone * base < 10000) {
+      while (overtone * base < 6000) {
         tones.push(overtone * base)
         overtone++
       }
@@ -96,7 +106,7 @@ const OvertoneDisplay = ({ notes, width = 1024, height = 100 }) => {
     <g>
       {freqs.map(series => <g key={series[0]}>
         {series.map((hz, i) =>
-          <rect key={hz} x={hz / 10000 * width} y={0} height={height} width={1}
+          <rect key={hz} x={hz / 6000 * width} y={0} height={height} width={1}
             fill={'rgb(V,V,V)'.replace(/V/g, i / series.length * 200)}
             fillOpacity={0.25}/>)}
       </g>) }
@@ -139,8 +149,10 @@ export default () => {
   const handleBaseFreqChange = useCallback(withNumber(setBaseFreq))
 
   const [bounds, setBounds] = useState({ downX: 1, upX: 2, downY: 0, upY: 0 })
-  const handleBoundsChange = useCallback(withNameNumber((name, value) => setBounds(({ ...vals }) => ({...vals, [name]: value}))))
-  console.log(bounds)
+  const handleBoundsChange = useCallback(withNameNumber((name, value) => setBounds(({ ...vals }) => ({ ...vals, [name]: value }))))
+
+  const [displayCents, setDisplayCents] = useState(false)
+  const handleDisplayCents = useCallback(() => setDisplayCents(v => !v))
 
   const grid = useMemo(() => {
     let rows = []
@@ -165,7 +177,6 @@ export default () => {
     return rows
   }, [bounds])
   const notes = useMemo(() => grid.flatMap(row => row), [grid])
-  console.log(grid,  notes)
 
   const [noteNames, setNoteNames] = useState({})
   const handleNoteNameChange = useCallback(event => {
@@ -252,12 +263,16 @@ export default () => {
           <input type="number" min={1} max={4} value={bounds.upY} name="upY" onChange={handleBoundsChange} />
         </div>
         <div>
+          display cents:
+          <input type="checkbox" checked={displayCents} onChange={handleDisplayCents} />
+        </div>
+        <div>
           <button onClick={panic}>silence!</button>
         </div>
       </div>
       <NoteWheel notes={notes} names={noteNames} />
     </div>
-    <NoteTable notes={notes} names={noteNames} />
+    <NoteTable notes={notes} names={noteNames} displayCents={displayCents} />
 
     <NoteContainer>
       {grid.map((row, idx) =>
