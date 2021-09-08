@@ -11,7 +11,7 @@ const NoteContainer = styled.div({
 })
 
 const Note = styled.div({
-  width: '5rem',
+  minWidth: '5rem',
   textAlign: 'center',
   padding: '5px',
   margin: '5px 5px 5px 0',
@@ -29,7 +29,7 @@ const OscButton = styled.button({
 
 const lineStyle = { strokeWidth: 2, fill: 'none' }
 
-const NoteWheel = ({ notes, displayLog, size = 200, }) => {
+const NoteWheel = ({ notes, names={}, displayLog, size = 200, }) => {
   const height = size * 0.75
   const middle= size/2
   return <svg width={size} height={height} style={{fontSize: '12px'}}>
@@ -39,7 +39,8 @@ const NoteWheel = ({ notes, displayLog, size = 200, }) => {
       const textAlign = pct > 0.5 ? 'end' : 'start'
       return <g key={ratio} transform={`rotate(${pct * 360}, ${middle}, ${height/2})`}>
         <line key={ratio} {...lineStyle} stroke="#aaa" x1={middle} y1={height * 0.1} x2={middle} y2={height * 0.3} />
-        <text x={middle} y={height*0.1} textAnchor={textAlign} transform={`rotate(${pct * -360}, ${middle}, ${height*0.08})`}>{ratio}</text>
+        <text x={middle} y={height * 0.1} textAnchor={textAlign}
+          transform={`rotate(${pct * -360}, ${middle}, ${height * 0.08})`}>{names[ratio] || ratio}</text>
       </g>
     })}</g>
   </svg>
@@ -57,17 +58,17 @@ const snapFraction = fraction => {
 
 const row = { borderBottom: '1px solid #ddd', margin: 0, fontSize: '12px', textAlign: 'right' }
 
-const NoteTable = ({ notes }) => {
+const NoteTable = ({ notes, names }) => {
   return <table>
     <thead>
       <tr>
         <th>&nbsp;</th>
-        {notes.map(n => <th key={n.ratio}>{n.ratio}</th>)}
+        {notes.map(n => <th key={n.ratio} style={row}>{names[n.ratio] || n.ratio}</th>)}
       </tr>
     </thead>
     <tbody>
       {notes.map(m => <tr key={m.ratio}>
-        <th  style={row}>{m.ratio}</th>
+        <th  style={row}>{names[m.ratio] || m.ratio}</th>
         {notes.map(n => <td key={n.ratio} style={row}>{snapFraction(new Fraction(m.scale / n.scale)).toFraction()}</td>)}
       </tr>)}
     </tbody>
@@ -148,12 +149,17 @@ export default () => {
     return range
   }, [lower, upper])
 
+  const [noteNames, setNoteNames] = useState({})
+  const handleNoteNameChange = useCallback(event => {
+    setNoteNames(({...vals}) => ({...vals, [event.target.name]: event.target.value }))
+  }, [])
+
   const [runningOscs, setRunningOscs] = useState({ vals: new Map() })
   const handleOscChange = useCallback(event => {
     const scale = parseFloat(event.target.value)
     const mult = parseFloat(event.target.name)
     const key = Symbol.for([scale, mult])
-    setRunningOscs(({ vaGls }) => {
+    setRunningOscs(({ vals }) => {
       if (vals.has(key)) { vals.delete(key) } else { vals.set(key, { scale, mult }) }
       return { vals }
     })
@@ -220,21 +226,24 @@ export default () => {
           <input type="number" min={1} max={12} value={upper} onChange={setUpper} />
         </div>
         <div>
-          Wheel Display Log
+          It's a secret to everyone
           <input type="checkbox" checked={wheelDisplayLog} onChange={handleWheelDisplayChange} />
         </div>
         <div>
           <button onClick={panic}>silence!</button>
         </div>
       </div>
-      <NoteWheel notes={fifthsRange} displayLog={wheelDisplayLog} />
+      <NoteWheel notes={fifthsRange} names={noteNames} displayLog={wheelDisplayLog} />
     </div>
-    <NoteTable notes={fifthsRange} />
+    <NoteTable notes={fifthsRange} names={noteNames} />
 
     <NoteContainer>
       {fifthsRange.map(n =>
         <Note key={n.distance}>
-          <div><strong>{n.ratio}</strong>: {(baseFreq * n.scale).toFixed(2)}</div>
+          <input type="text" style={{ width: '3rem', textAlign: 'center' }}
+            name={n.ratio} value={noteNames[n.ratio] || ''} onChange={handleNoteNameChange} />
+          <div><strong>{n.ratio}</strong></div>
+          <div>{(baseFreq * n.scale).toFixed(2)}</div>
           <div>
             {oscButtons.map(b =>
               <OscButton running={runningOscs.vals.has(Symbol.for([n.scale, b]))} key={b} name={b} value={n.scale} onClick={handleOscChange}>{b}</OscButton>
