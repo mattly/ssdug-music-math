@@ -29,19 +29,74 @@ const OscButton = styled.button({
 
 const lineStyle = { strokeWidth: 2, fill: 'none' }
 
-const NoteRelations = ({ notes, logScale, size = 200, }) => {
+const NoteWheel = ({ notes, displayLog, size = 200, }) => {
   const height = size * 0.75
   const middle= size/2
-  return <svg width={size} height={height} style={{'font-size': '12px'}}>
+  return <svg width={size} height={height} style={{fontSize: '12px'}}>
     <circle cx={middle} cy={height / 2} r={size/4} {...lineStyle} stroke="#ddd" />
     <g>{notes.map(({ scale, ratio }) => {
-      const pct = scale - 1
+      const pct = displayLog ? Math.log(scale)/Math.log(2) : scale - 1
       const textAlign = pct > 0.5 ? 'end' : 'start'
-      return <g transform={`rotate(${pct * 360}, ${middle}, ${height/2})`}>
+      return <g key={ratio} transform={`rotate(${pct * 360}, ${middle}, ${height/2})`}>
         <line key={ratio} {...lineStyle} stroke="#aaa" x1={middle} y1={height * 0.1} x2={middle} y2={height * 0.3} />
         <text x={middle} y={height*0.1} textAnchor={textAlign} transform={`rotate(${pct * -360}, ${middle}, ${height*0.08})`}>{ratio}</text>
       </g>
     })}</g>
+  </svg>
+}
+
+const snapFraction = fraction => {
+  while (fraction.valueOf() < 1) {
+    fraction = fraction.mul(2)
+  }
+  while (fraction.valueOf() >= 2) {
+    fraction = fraction.div(2)
+  }
+  return fraction
+}
+
+const row = { borderBottom: '1px solid #ddd', margin: 0, fontSize: '12px', textAlign: 'right' }
+
+const NoteTable = ({ notes }) => {
+  return <table>
+    <thead>
+      <tr>
+        <th>&nbsp;</th>
+        {notes.map(n => <th key={n.ratio}>{n.ratio}</th>)}
+      </tr>
+    </thead>
+    <tbody>
+      {notes.map(m => <tr key={m.ratio}>
+        <th  style={row}>{m.ratio}</th>
+        {notes.map(n => <td key={n.ratio} style={row}>{snapFraction(new Fraction(m.scale / n.scale)).toFraction()}</td>)}
+      </tr>)}
+    </tbody>
+  </table>
+}
+
+const OvertoneDisplay = ({ notes, width = 1024, height = 100 }) => {
+  const freqs = useMemo(() =>
+    notes.map(v => {
+      const base = v.scale * v.mult * 100
+      const tones = [base]
+      let overtone = 2
+      while (overtone * base < 10000) {
+        tones.push(overtone * base)
+        overtone++
+      }
+      return tones
+    })
+    , [notes])
+
+  return <svg width={width} height={height}>
+    <g>
+      {freqs.map(series => <g key={series[0]}>
+        {series.map((hz, i) =>
+          <rect key={hz} x={hz / 10000 * width} y={0} height={height} width={1}
+            fill={'rgb(V,V,V)'.replace(/V/g, i / series.length * 200)}
+            fillOpacity={0.25}/>)}
+      </g>) }
+    </g>
   </svg>
 }
 
@@ -57,12 +112,7 @@ const makeFifth = (baseRatio, distance) => {
       ratio = ratio.div(fifth)
     }
   }
-  while (ratio < 1) {
-    ratio = ratio.mul(2)
-  }
-  while (ratio > 2) {
-    ratio = ratio.div(2)
-  }
+  ratio = snapFraction(ratio)
   return {
     distance,
     scale: ratio.valueOf(),
@@ -70,7 +120,7 @@ const makeFifth = (baseRatio, distance) => {
   }
 }
 
-const withNumber = f => event => event.target.valueAsNumber && f(event.target.valueAsNumber)
+const withNumber = f => event => typeof event.target.valueAsNumber == 'number' && f(event.target.valueAsNumber)
 
 const oscButtons = [0.25, 0.5, 1, 2, 4]
 
@@ -83,9 +133,12 @@ export default () => {
   const [baseFreq, setBaseFreq] = useState(200)
   const handleBaseFreqChange = useCallback(withNumber(setBaseFreq))
 
-  const [[lower, upper], setBounds] = useState([1, 1])
+  const [[lower, upper], setBounds] = useState([0, 1])
   const setLower = useCallback(withNumber(lower => setBounds(([old, upper]) => ([lower, upper]))))
   const setUpper = useCallback(withNumber(upper => setBounds(([lower, old]) => ([lower, upper]))))
+
+  const [wheelDisplayLog, setWheelDisplayLog] = useState(false)
+  const handleWheelDisplayChange = useCallback(() => setWheelDisplayLog(v => !v), [])
 
   const fifthsRange = useMemo(() => {
     const range = []
@@ -100,11 +153,23 @@ export default () => {
     const scale = parseFloat(event.target.value)
     const mult = parseFloat(event.target.name)
     const key = Symbol.for([scale, mult])
-    setRunningOscs(({ vals }) => {
+    setRunningOscs(({ vaGls }) => {
       if (vals.has(key)) { vals.delete(key) } else { vals.set(key, { scale, mult }) }
       return { vals }
     })
   }, [ctx])
+
+  useEffect(() => {
+    const availNotes = new Set(fifthsRange.map(({ scale }) => scale))
+    const { vals } = runningOscs
+    let changed = false
+    vals.forEach(({ scale }, k) => {
+      if (!availNotes.has(scale)) { vals.delete(k); changed = true }
+    })
+    changed && setRunningOscs({ vals })
+  }, [fifthsRange, runningOscs])
+
+  const panic = useCallback(() => setRunningOscs({ vals: new Map() }))
 
   useEffect(() => {
     const targetTime = ctx.currentTime + 0.25
@@ -125,7 +190,7 @@ export default () => {
         osc.start()
         const gain = ctx.createGain()
         gain.gain.setValueAtTime(0.00001, ctx.currentTime)
-        gain.gain.exponentialRampToValueAtTime(0.15, targetTime)
+        gain.gain.exponentialRampToValueAtTime(0.1, targetTime)
         osc.connect(gain)
         gain.connect(analyser)
         gain.connect(ctx.destination)
@@ -148,19 +213,28 @@ export default () => {
         </div>
         <div>
           fifths Down:
-          <input type="number" min={0} max={10} value={lower} onChange={setLower} />
+          <input type="number" min={0} max={12} value={lower} onChange={setLower} />
         </div>
         <div>
           fifths Up:
-          <input type="number" min={1} max={10} value={upper} onChange={setUpper} />
+          <input type="number" min={1} max={12} value={upper} onChange={setUpper} />
+        </div>
+        <div>
+          Wheel Display Log
+          <input type="checkbox" checked={wheelDisplayLog} onChange={handleWheelDisplayChange} />
+        </div>
+        <div>
+          <button onClick={panic}>silence!</button>
         </div>
       </div>
-      <NoteRelations notes={fifthsRange} />
+      <NoteWheel notes={fifthsRange} displayLog={wheelDisplayLog} />
     </div>
+    <NoteTable notes={fifthsRange} />
+
     <NoteContainer>
       {fifthsRange.map(n =>
         <Note key={n.distance}>
-          <div><strong>{n.ratio}</strong>: {n.freq}</div>
+          <div><strong>{n.ratio}</strong>: {(baseFreq * n.scale).toFixed(2)}</div>
           <div>
             {oscButtons.map(b =>
               <OscButton running={runningOscs.vals.has(Symbol.for([n.scale, b]))} key={b} name={b} value={n.scale} onClick={handleOscChange}>{b}</OscButton>
@@ -169,6 +243,7 @@ export default () => {
         </Note>
       )}
     </NoteContainer>
-    <AnalyserDisplay analyser={analyser} freqHeight={300} />
+    <OvertoneDisplay notes={Array.from(runningOscs.vals.values())} />
+    <AnalyserDisplay analyser={analyser} freqHeight={100} />
   </div>
 }

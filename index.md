@@ -43,6 +43,9 @@ A tuning sytem is an attempt to organize harmonic overtones
 
 ## Harmonic Grids & Tuning Systems
 
+- [Pythagorean Tuning](https://en.wikipedia.org/wiki/Pythagorean_tuning)
+- [Were the Greeks scared of irrational numbers?](https://kiwihellenist.blogspot.com/2015/11/were-greeks-scared-of-irrational-numbers.html)
+
 ## Chords
 
 ## Scales, Modes, and Keys
