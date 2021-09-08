@@ -6,8 +6,11 @@ import { useAnalyser, AnalyserDisplay } from '../timber/analyser'
 
 const NoteContainer = styled.div({
   overflowX: 'scroll',
-  display: 'flex',
   backgroundColor: '#eee'
+})
+
+const NoteRow = styled.div({
+  display: 'flex',
 })
 
 const Note = styled.div({
@@ -121,8 +124,8 @@ const makeFifth = (baseRatio, distance) => {
   }
 }
 
-const withNumber = f => event => typeof  event.target.valueAsNumber == 'number' && f(event.target.valueAsNumber)
-const withNameNumber = f => event => typeof event.target.valueAsNumber == 'number' && f(event.target.name, event.target.valueAsNumber)
+const withNumber = f => event => event.target.validity.valid && f(event.target.valueAsNumber)
+const withNameNumber = f => event => event.target.validity.valid && f(event.target.name, event.target.valueAsNumber)
 
 const oscButtons = [0.25, 0.5, 1, 2, 4]
 
@@ -135,16 +138,34 @@ export default () => {
   const [baseFreq, setBaseFreq] = useState(200)
   const handleBaseFreqChange = useCallback(withNumber(setBaseFreq))
 
-  const [{ downX, upX, downY, upY }, setBounds] = useState({ downX: 1, upX: 2, downY: 0, upY: 0 })
-  const handleBoundsChange = useCallback(withNameNumber((name, value) => setBounds((...vals) => ({...vals, [name]: value}))))
+  const [bounds, setBounds] = useState({ downX: 1, upX: 2, downY: 0, upY: 0 })
+  const handleBoundsChange = useCallback(withNameNumber((name, value) => setBounds(({ ...vals }) => ({...vals, [name]: value}))))
+  console.log(bounds)
 
   const grid = useMemo(() => {
-    const range = []
-    for (let acc = (downX * -1); acc <= upX; acc++) {
-      range.push(makeFifth(1, acc))
+    let rows = []
+    let base = 1
+    for (let y = 0; y <= bounds.upY; y++) {
+      const cells = []
+      for (let x = (bounds.downX * -1); x <= bounds.upX; x++) {
+        cells.push(makeFifth(base, x))
+      }
+      rows = [cells, ...rows]
+      base = base * 5/4
     }
-    return range
-  }, [downX, upX])
+    base = 8/5
+    for (let y = 0; y < bounds.downY; y++) {
+      const cells = []
+      for (let x = (bounds.downX * -1); x <= bounds.upX; x++) {
+        cells.push(makeFifth(base, x))
+      }
+      rows.push(cells)
+      base = base * 8/5
+    }
+    return rows
+  }, [bounds])
+  const notes = useMemo(() => grid.flatMap(row => row), [grid])
+  console.log(grid,  notes)
 
   const [noteNames, setNoteNames] = useState({})
   const handleNoteNameChange = useCallback(event => {
@@ -163,14 +184,14 @@ export default () => {
   }, [ctx])
 
   useEffect(() => {
-    const availNotes = new Set(grid.map(({ scale }) => scale))
+    const availNotes = new Set(notes.map(({ scale }) => scale))
     const { vals } = runningOscs
     let changed = false
     vals.forEach(({ scale }, k) => {
       if (!availNotes.has(scale)) { vals.delete(k); changed = true }
     })
     changed && setRunningOscs({ vals })
-  }, [grid, runningOscs])
+  }, [notes, runningOscs])
 
   const panic = useCallback(() => setRunningOscs({ vals: new Map() }))
 
@@ -216,33 +237,44 @@ export default () => {
         </div>
         <div>
           fifths Down:
-          <input type="number" min={0} max={12} value={downX} name="downX" onChange={handleBoundsChange} />
+          <input type="number" min={0} max={12} value={bounds.downX} name="downX" onChange={handleBoundsChange} />
         </div>
         <div>
           fifths Up:
-          <input type="number" min={1} max={12} value={upX} name="upX" onChange={handleBoundsChange} />
+          <input type="number" min={1} max={12} value={bounds.upX} name="upX" onChange={handleBoundsChange} />
+        </div>
+        <div>
+          thirds Down:
+          <input type="number" min={0} max={4} value={bounds.downY} name="downY" onChange={handleBoundsChange} />
+        </div>
+        <div>
+          thirds Up:
+          <input type="number" min={1} max={4} value={bounds.upY} name="upY" onChange={handleBoundsChange} />
         </div>
         <div>
           <button onClick={panic}>silence!</button>
         </div>
       </div>
-      <NoteWheel notes={grid} names={noteNames} />
+      <NoteWheel notes={notes} names={noteNames} />
     </div>
-    <NoteTable notes={grid} names={noteNames} />
+    <NoteTable notes={notes} names={noteNames} />
 
     <NoteContainer>
-      {grid.map(n =>
-        <Note key={n.distance}>
-          <input type="text" style={{ width: '3rem', textAlign: 'center' }}
-            name={n.ratio} value={noteNames[n.ratio] || ''} onChange={handleNoteNameChange} />
-          <div><strong>{n.ratio}</strong></div>
-          <div>{(baseFreq * n.scale).toFixed(2)}</div>
-          <div>
-            {oscButtons.map(b =>
-              <OscButton running={runningOscs.vals.has(Symbol.for([n.scale, b]))} key={b} name={b} value={n.scale} onClick={handleOscChange}>{b}</OscButton>
-            )}
-          </div>
-        </Note>
+      {grid.map((row, idx) =>
+        <NoteRow key={idx}>
+          {row.map(n =>
+            <Note key={n.distance}>
+              <input type="text" style={{ width: '3rem', textAlign: 'center' }}
+                name={n.ratio} value={noteNames[n.ratio] || ''} onChange={handleNoteNameChange} />
+              <div><strong>{n.ratio}</strong></div>
+              <div>{(baseFreq * n.scale).toFixed(2)}</div>
+              <div>
+                {oscButtons.map(b =>
+                  <OscButton running={runningOscs.vals.has(Symbol.for([n.scale, b]))} key={b} name={b} value={n.scale} onClick={handleOscChange}>{b}</OscButton>
+                )}
+              </div>
+            </Note>)}
+        </NoteRow>
       )}
     </NoteContainer>
     <OvertoneDisplay notes={Array.from(runningOscs.vals.values())} />
