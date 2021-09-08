@@ -10,6 +10,7 @@ import Domains from './timber/domains'
 import Overtones from './timber/additive'
 import Pythagoras from './harmony/pythagoras'
 import JustIntonation from './harmony/just'
+import EqualTemperament from  './harmony/equal'
 
 const toc = [
   {
@@ -34,7 +35,8 @@ const toc = [
     name: "Harmony",
     pages: [
       { name: "Pythagorean", comp: Pythagoras },
-      { name: "Just Intonation", comp: JustIntonation }
+      { name: "Just Intonation", comp: JustIntonation },
+      { name: "Equal Temperament", comp: EqualTemperament },
     ]
   }
 ]

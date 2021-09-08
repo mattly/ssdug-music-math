@@ -45,19 +45,10 @@ A tuning sytem is an attempt to organize harmonic overtones
 
 - [Pythagorean Tuning](https://en.wikipedia.org/wiki/Pythagorean_tuning)
 - [Were the Greeks scared of irrational numbers?](https://kiwihellenist.blogspot.com/2015/11/were-greeks-scared-of-irrational-numbers.html)
+- [Five-Limit Tuning](https://en.wikipedia.org/wiki/Five-limit_tuning)
+- [Equal Temperament](https://en.wikipedia.org/wiki/Equal_temperament)
 
-## Chords
-
-## Scales, Modes, and Keys
-
-# Meldoy
-
-## Pitch, Meet Rhythm
-
-## Motion & Focus
-
-## Cantus Firmus, Imitations, and Themes
-
-## Call and Response, Counterpoint
-
-# Conclusion
+## Etc
+- Chords,
+- Scales, Modes, Keys
+- Melody
