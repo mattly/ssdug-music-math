@@ -47,6 +47,7 @@ A tuning sytem is an attempt to organize harmonic overtones
 - [Were the Greeks scared of irrational numbers?](https://kiwihellenist.blogspot.com/2015/11/were-greeks-scared-of-irrational-numbers.html)
 - [Five-Limit Tuning](https://en.wikipedia.org/wiki/Five-limit_tuning)
 - [Equal Temperament](https://en.wikipedia.org/wiki/Equal_temperament)
+- [Tone Lattice](https://en.wikipedia.org/wiki/Lattice_(music))
 
 ## Etc
 - Chords,

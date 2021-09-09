@@ -1,6 +1,5 @@
 import styled from '@emotion/styled'
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react'
-import Fraction from 'fraction.js'
 import useAudioContext from '../utils/useAudioContext'
 import { useAnalyser, AnalyserDisplay } from '../timber/analyser'
 
@@ -207,6 +206,7 @@ export default () => {
         <input type="text" style={{ width: '3rem', textAlign: 'center' }}
           name={n.step} value={noteNames[n.step] || ''} onChange={handleNoteNameChange} />
         <div><strong>{n.cents.toFixed(2)}</strong></div>
+        <div>{n.scale.toFixed(3)}</div>
         <div>{(baseFreq * n.scale).toFixed(2)}</div>
         <div>
           {oscButtons.map(b =>

@@ -10,7 +10,8 @@ import Domains from './timber/domains'
 import Overtones from './timber/additive'
 import Pythagoras from './harmony/pythagoras'
 import JustIntonation from './harmony/just'
-import EqualTemperament from  './harmony/equal'
+import EqualTemperament from './harmony/equal'
+import Chords from './harmony/chords'
 
 const toc = [
   {
@@ -37,6 +38,7 @@ const toc = [
       { name: "Pythagorean", comp: Pythagoras },
       { name: "Just Intonation", comp: JustIntonation },
       { name: "Equal Temperament", comp: EqualTemperament },
+      { name: "Chords and Keys", comp: Chords }
     ]
   }
 ]
