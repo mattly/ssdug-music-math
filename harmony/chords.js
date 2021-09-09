@@ -5,7 +5,7 @@ import { useAnalyser, AnalyserDisplay } from '../timber/analyser'
 
 const notes = "CDEFGAB"
 
-const height = 600
+const height = 500
 const width = 1200
 const innerWidth = 1150
 const innerHeight = height - 20
@@ -19,7 +19,7 @@ const latticeBase = [
 
 const noteCoords = (idx, row) => ({
   x: ((2 - row) * innerWidth / 20) + (innerWidth * idx / 8),
-  y: ((innerHeight / 2) + ((row - 2) * (innerHeight / 5))) + ((1 - (idx - 3)) * 15)
+  y: ((innerHeight / 2) + ((row - 2) * (innerHeight / 4.1))) + ((1 - (idx - 3)) * 15)
 })
 
 const suffixes = (row, idx) => {
@@ -33,20 +33,32 @@ const suffixes = (row, idx) => {
 
 const baseLine = { strokeWidth: 2 }
 
-const ChordLines = ({ ns, row }) => <g>
-  {ns.map((n, i) => {
-    if (!n) { return null }
-    const base = noteCoords(i, row)
-    const fifth = i < ns.length-1 && noteCoords(i + 1, row)
-    const thirdUp = row > 0 && latticeBase[row - 1][i] && noteCoords(i, row - 1)
-    const thirdDown = row < 3 && latticeBase[row+1][i+1] && noteCoords(i+1, row+1)
-    return <g key={i}>
-      {fifth && <line x1={base.x} x2={fifth.x} y1={base.y} y2={fifth.y} stroke="#88f" {...baseLine} />}
-      {thirdUp && <line x1={base.x} x2={thirdUp.x} y1={base.y} y2={thirdUp.y} stroke="#fa8" {...baseLine} />}
-      {thirdDown && <line x1={base.x} x2={thirdDown.x} y1={base.y} y2={thirdDown.y} stroke="#a84" {...baseLine} />}
+const ChordLines = ({ ns, row }) => {
+  const chords = []
+  const lines = []
+  ns.forEach((n, i) => {
+    if (n) {
+      const base = noteCoords(i, row)
+      const fifth = i < ns.length - 1 && noteCoords(i + 1, row)
+      const thirdUp = row > 0 && latticeBase[row - 1][i] && noteCoords(i, row - 1)
+      const thirdDown = row < 3 && latticeBase[row + 1][i + 1] && noteCoords(i + 1, row + 1)
+      if (fifth) { lines.push({ base, other: fifth, stroke: "#88f" }) }
+      if (thirdUp) { lines.push({ base, other: thirdUp, stroke: "#fa8" }) }
+      if (thirdDown) { lines.push({ base, other: thirdDown, stroke: "#a84" }) }
+      if (fifth && thirdUp) { chords.push({ base, fifth, third: thirdUp, fill: "#eee"})}
+    }
+  })
+  return <g>
+    <g>
+      {lines.map(({ stroke, base, other }, i) =>
+        <line key={i} stroke={stroke} x1={base.x} x2={other.x} y1={base.y} y2={other.y} strokeWidth="5" />)}
     </g>
-  })}
-</g>
+    <g>
+      {chords.map(({ base, fifth, third, fill }, i) =>
+        <polygon points={`${base.x},${base.y} ${third.x},${third.y} ${fifth.x},${fifth.y}`} fill={fill} />)}
+    </g>
+  </g>
+}
 
 const equivalences = [
   new Set(["Db", "C#"]),
@@ -162,7 +174,7 @@ export default () => {
     </div>
 
     <svg width={width} height={height}>
-     <g transform={`translate(${(width - innerWidth) / 2}, ${(height - innerHeight) / 2})`}>
+     <g transform={`translate(${(width - innerWidth) / 2}, 20)`}>
        {latticeBase.map((notes, i) => <ChordLines key={i}  ns={notes} row={i} />)}
        {latticeBase.map((notes, rowIdx) => <FifthRow  key={rowIdx} ns={notes} row={rowIdx} onClick={handleNoteChange} running={runningNotes} />)}
      </g>
