@@ -1,5 +1,7 @@
 # Intro
 
+Install the dependencies with `npm install` and then run the development server with `npm run dev`G
+
 - the role of Music Theory
 - on "tone deafness" [Amusia](https://en.wikipedia.org/wiki/Amusia)
 
